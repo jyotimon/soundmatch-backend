@@ -120,19 +120,22 @@ export async function fetchRecentlyPlayed(client: AxiosInstance): Promise<Spotif
 export async function fetchAudioFeatures(
   client: AxiosInstance,
   trackIds: string[]
-): Promise<SpotifyAudioFeatures[]> {
+): Promise<any[]> {
   if (!trackIds.length) return [];
-  const results: SpotifyAudioFeatures[] = [];
-  // Spotify allows max 100 IDs per request
-  for (let i = 0; i < trackIds.length; i += 100) {
-    const chunk = trackIds.slice(i, i + 100);
-    const { data } = await client.get<{ audio_features: SpotifyAudioFeatures[] }>(
-      `/audio-features?ids=${chunk.join(',')}`
-    );
-    results.push(...data.audio_features.filter(Boolean));
+  try {
+    const results: any[] = [];
+    for (let i = 0; i < trackIds.length; i += 100) {
+      const chunk = trackIds.slice(i, i + 100);
+      const { data } = await client.get(`/audio-features?ids=${chunk.join(',')}`);
+      results.push(...(data.audio_features ?? []).filter(Boolean));
+    }
+    return results;
+  } catch {
+    console.warn('[spotify] Audio features unavailable (403) — skipping');
+    return [];
   }
-  return results;
 }
+
 
 // ─── Fetch everything needed to build a music profile ────────────────────────
 export async function fetchAllMusicData(userId: string) {

@@ -15,6 +15,7 @@ import { startMusicSyncWorker }  from './jobs/music-sync.job';
 import { startMatchScoreWorker } from './jobs/match-score.job';
 
 const app = express();
+app.set('trust proxy', 1);  // Enable if behind a proxy (e.g., Heroku, Nginx) for correct client IPs in rate limiting and logging
 
 app.use(helmet());
 app.use(cors({ origin: config.FRONTEND_URL, credentials: true }));
