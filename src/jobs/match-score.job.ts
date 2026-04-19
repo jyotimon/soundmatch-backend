@@ -3,7 +3,15 @@ import IORedis from 'ioredis';
 import { config } from '../config';
 import { computeScoresForNewUser } from '../services/compatibility.service';  // ← was commented out
 
-const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const redis = new IORedis(config.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  tls: {},
+  connectTimeout: 10000,
+  retryStrategy: (times) => Math.min(times * 500, 5000),
+  enableOfflineQueue: false,
+  lazyConnect: true,
+});
+
 
 export const matchScoreQueue = new Queue<MatchScoreJobData>('match-scores', {
   connection: redis,

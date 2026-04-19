@@ -18,7 +18,15 @@ import { fetchAllMusicData } from '../services/spotify.service';
 import { upsertMusicProfile } from '../services/profile.service';
 import { enqueueMatchScoring } from './match-score.job';
 
-const redis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const redis = new IORedis(config.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  tls: {},
+  connectTimeout: 10000,
+  retryStrategy: (times) => Math.min(times * 500, 5000),
+  enableOfflineQueue: false,
+  lazyConnect: true,
+});
+
 
 export const musicSyncQueue = new Queue<MusicSyncJobData>('music-sync', {
   connection: redis,
