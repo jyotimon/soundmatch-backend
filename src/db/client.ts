@@ -10,13 +10,17 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
-  max: 20,
-  idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 2_000,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+  max: 3,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 10_000,
+  allowExitOnIdle: true,
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected PostgreSQL pool error:', err);
+  console.error(' PostgreSQL pool error:', err.message);
 });
 
 export async function query<T = Record<string, unknown>>(
