@@ -93,6 +93,36 @@ function extractGenresFromArtists(artists: SpotifyArtist[]): GenreCount[] {
 
 // ─── Personality type classification ─────────────────────────────────────────
 
+function estimateMoodFromGenres(genres: any[]): any {
+  const names = genres.map((g: any) => g.genre?.toLowerCase() ?? '');
+  
+  const highEnergy  = ['metal','punk','hardcore','drum','bass','techno','rave','grunge'];
+  const lowEnergy   = ['classical','ambient','acoustic','folk','sleep','meditation','piano'];
+  const highDance   = ['hip-hop','dancehall','house','disco','funk','afrobeat','reggaeton'];
+  const sad         = ['blues','emo','sad','melancholic','slowcore'];
+  const happy       = ['pop','indie-pop','happy','summer','tropical'];
+
+  const score = (list: string[]) =>
+    names.filter(n => list.some(k => n.includes(k))).length / Math.max(names.length, 1);
+
+  const energy      = Math.min(0.3 + score(highEnergy) * 0.7 - score(lowEnergy) * 0.3, 1);
+  const danceability = Math.min(0.3 + score(highDance) * 0.7, 1);
+  const valence     = Math.min(0.3 + score(happy) * 0.6 - score(sad) * 0.3, 1);
+
+  return {
+    energy:           Math.max(0.1, energy),
+    valence:          Math.max(0.1, valence),
+    danceability:     Math.max(0.1, danceability),
+    acousticness:     Math.max(0.1, score(lowEnergy)),
+    instrumentalness: Math.max(0.1, score(['classical','ambient','instrumental'])),
+    speechiness:      0.1,
+    tempo:            120,
+    loudness:         -8,
+  };
+}
+
+
+
 function classifyPersonality(f: AudioFeaturesAvg): string {
   const { energy, valence, danceability } = f;
   if (energy > 0.7 && valence > 0.6 && danceability > 0.65) return 'The Energiser';
@@ -103,6 +133,9 @@ function classifyPersonality(f: AudioFeaturesAvg): string {
   return 'The Wanderer';
 }
 
+
+
+
 // ─── Main upsert function — saves a full music profile to the DB ──────────────
 
 /**
@@ -112,7 +145,9 @@ function classifyPersonality(f: AudioFeaturesAvg): string {
 export async function upsertMusicProfile(userId: string, data: RawSpotifyData) {
   const allArtists = [...data.topArtistsShort, ...data.topArtistsMedium, ...data.topArtistsLong];
   const top_genres        = extractGenresFromArtists(allArtists);
-  const audio_features_avg = averageAudioFeatures(data.audioFeatures);
+  const audio_features_avg = data.audioFeatures.length > 0
+  ? averageAudioFeatures(data.audioFeatures)
+  : estimateMoodFromGenres(top_genres);
   const listening_hours   = buildListeningHistogram(data.recentlyPlayed);
   const personality_type  = classifyPersonality(audio_features_avg);
 
