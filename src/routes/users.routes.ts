@@ -3,7 +3,7 @@ import { requireAuth, AuthRequest } from '../auth.middleware';
 import { getPublicUser } from '../services/user.service';
 import { getMusicProfile } from '../services/profile.service';
 import { getCompatibilityScore, upsertCompatibilityScore } from '../services/compatibility.service';
-import { enqueueMusicSync } from '../jobs/music-sync.job';
+import { startSyncInBackground } from '../services/sync.service';
 import { generateMusicPersona } from '../services/ai.service';
 
 
@@ -33,7 +33,7 @@ usersRouter.get('/me/profile', async (req: Request, res: Response) => {
 usersRouter.post('/me/sync', async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user.sub;
-    await enqueueMusicSync(userId, 'manual');
+    startSyncInBackground(userId, 'manual');
     res.json({ success: true, message: 'Sync queued — refresh your profile in ~30 seconds' });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });

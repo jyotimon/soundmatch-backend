@@ -59,9 +59,7 @@ authRouter.get('/callback', async (req: Request, res: Response) => {
     });
 
     // Kick off async music sync — FIX: was commented out before, so no data ever arrived
-    startSyncInBackground(user.id, 'login').catch((err) =>
-      console.error('[auth] Failed to queue music sync:', err)
-    );
+    startSyncInBackground(user.id, 'login');
 
     // FIX: redirect to /auth/callback (not /dashboard) so the frontend captures the token
     return res.redirect(`${config.FRONTEND_URL}/auth/callback?token=${jwtToken}`);
