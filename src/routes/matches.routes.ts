@@ -3,9 +3,41 @@ import { requireAuth, AuthRequest } from '../auth.middleware';
 import { getTopMatches, getCompatibilityScore, upsertCompatibilityScore } from '../services/compatibility.service';
 import { createSharedPlaylist } from '../services/spotify.service';
 import { query, queryOne } from '../db/client';
+import { generateCompatibilityInsight, generatePlaylistName } from '../services/ai.service';
+import { getMusicProfile } from '../services/profile.service';
+
+// Add to the GET /:userId route, after getting the score:
 
 export const matchesRouter = Router();
 matchesRouter.use(requireAuth);
+matchesRouter.get('/:userId', async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as AuthRequest).user.sub;
+    const { userId }    = req.params;
+
+    if (currentUserId === userId)
+      return res.status(400).json({ success: false, error: 'Cannot compare with yourself' });
+
+    const score = await getCompatibilityScore(currentUserId, userId)
+      ?? await upsertCompatibilityScore(currentUserId, userId);
+
+    if (!score) return res.status(404).json({ success: false, error: 'No profiles found' });
+
+    // AI insight — inside the route handler, not outside
+    const [profileA, profileB] = await Promise.all([
+      getMusicProfile(currentUserId),
+      getMusicProfile(userId),
+    ]);
+
+    const insight = (profileA && profileB)
+      ? await generateCompatibilityInsight(profileA, profileB, score).catch(() => null)
+      : null;
+
+    res.json({ success: true, data: { ...score, ai_insight: insight } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
+});
 
 // GET /api/matches — top compatibility matches for current user
 matchesRouter.get('/', async (req: Request, res: Response) => {
@@ -120,7 +152,25 @@ matchesRouter.post('/:matchId/playlist', async (req: Request, res: Response) => 
     );
 
     const uris = tracks.map(t => `spotify:track:${t.track_id}`);
-    const playlistId = await createSharedPlaylist(currentUserId, uris);
+
+// Get both profiles for AI playlist name
+const [profileA, profileB] = await Promise.all([
+  getMusicProfile((match as any).user_a_id),
+  getMusicProfile((match as any).user_b_id),
+]);
+
+const compatScore = await getCompatibilityScore(
+  (match as any).user_a_id,
+  (match as any).user_b_id
+);
+
+const aiPlaylistName = await generatePlaylistName(
+  String(profileA?.personality_type ?? 'Music Lover'),  // ← wrap in String()
+  String(profileB?.personality_type ?? 'Music Lover'),  // ← wrap in String()
+  compatScore?.shared_artists ?? []
+).catch(() => 'Our Shared Sound');
+
+const playlistId = await createSharedPlaylist(currentUserId, uris, aiPlaylistName);
     if (!playlistId)
       return res.status(500).json({ success: false, error: 'Could not create Spotify playlist' });
 

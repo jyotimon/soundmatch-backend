@@ -11,8 +11,8 @@ import { authRouter }      from './routes/auth.routes';
 import { usersRouter }     from './routes/users.routes';
 import { matchesRouter }   from './routes/matches.routes';   // ← was missing
 import { communityRouter } from './routes/community.routes';
-import { startMusicSyncWorker }  from './jobs/music-sync.job';
-import { startMatchScoreWorker } from './jobs/match-score.job';
+// import { startMusicSyncWorker }  from './jobs/music-sync.job';
+// import { startMatchScoreWorker } from './jobs/match-score.job';
 
 const app = express();
 app.set('trust proxy', 1);  // Enable if behind a proxy (e.g., Heroku, Nginx) for correct client IPs in rate limiting and logging

@@ -4,9 +4,13 @@ import { getPublicUser } from '../services/user.service';
 import { getMusicProfile } from '../services/profile.service';
 import { getCompatibilityScore, upsertCompatibilityScore } from '../services/compatibility.service';
 import { enqueueMusicSync } from '../jobs/music-sync.job';
+import { generateMusicPersona } from '../services/ai.service';
+
 
 export const usersRouter = Router();
 usersRouter.use(requireAuth);
+
+
 
 // GET /api/users/me/profile — full music profile for current user
 usersRouter.get('/me/profile', async (req: Request, res: Response) => {
@@ -54,6 +58,21 @@ usersRouter.get('/:id', async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: { user, compatibility } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
+});
+
+
+// GET /api/users/me/persona — AI music description
+usersRouter.get('/me/persona', async (req: Request, res: Response) => {
+  try {
+    const userId  = (req as AuthRequest).user.sub;
+    const profile = await getMusicProfile(userId);
+    if (!profile) return res.status(404).json({ success: false, error: 'No profile yet' });
+
+    const description = await generateMusicPersona(profile);
+    res.json({ success: true, data: { description } });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });
   }

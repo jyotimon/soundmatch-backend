@@ -6,7 +6,8 @@ import { upsertUser, getUserById } from '../services/user.service';
 import { signToken } from '../utils/jwt';
 import { requireAuth, AuthRequest } from '../auth.middleware';
 import { getMusicProfile } from '../services/profile.service';
-import { enqueueMusicSync } from '../jobs/music-sync.job';
+import { startSyncInBackground } from '../services/sync.service';
+// and: startSyncInBackground(user.id, 'login')
 
 export const authRouter = Router();
 
@@ -58,7 +59,7 @@ authRouter.get('/callback', async (req: Request, res: Response) => {
     });
 
     // Kick off async music sync — FIX: was commented out before, so no data ever arrived
-    enqueueMusicSync(user.id, 'login').catch((err) =>
+    startSyncInBackground(user.id, 'login').catch((err) =>
       console.error('[auth] Failed to queue music sync:', err)
     );
 
