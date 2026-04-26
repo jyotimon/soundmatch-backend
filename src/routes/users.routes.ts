@@ -68,10 +68,13 @@ usersRouter.get('/:id', async (req: Request, res: Response) => {
 usersRouter.get('/me/persona', async (req: Request, res: Response) => {
   try {
     const userId  = (req as AuthRequest).user.sub;
-    const profile = await getMusicProfile(userId);
-    if (!profile) return res.status(404).json({ success: false, error: 'No profile yet' });
+    const profile = await getMusicProfile(userId) as any;
 
-    const description = await generateMusicPersona(profile);
+    if (!profile) 
+      return res.status(404).json({ success: false, error: 'No profile yet' });
+
+    // Return cached persona — no Gemini call needed
+    const description = profile.ai_persona ?? '';
     res.json({ success: true, data: { description } });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });

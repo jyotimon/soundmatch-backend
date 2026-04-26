@@ -1,6 +1,8 @@
 import { fetchAllMusicData } from './spotify.service';
-import { upsertMusicProfile } from './profile.service';
+import { upsertMusicProfile, getMusicProfile } from './profile.service';
 import { computeScoresForNewUser } from './compatibility.service';
+import { generateMusicPersona } from './ai.service';
+import { query } from '../db/client';
 
 const inProgress = new Set<string>();
 
@@ -14,6 +16,17 @@ export async function runMusicSync(userId: string, triggeredBy = 'manual') {
   try {
     const rawData = await fetchAllMusicData(userId);
     await upsertMusicProfile(userId, rawData);
+    const profile = await getMusicProfile(userId);
+    if (profile) {
+      const persona = await generateMusicPersona(profile).catch(() => '');
+      if (persona) {
+        await query(
+          'UPDATE music_profiles SET ai_persona = $1 WHERE user_id = $2',
+          [persona, userId]
+        );
+        console.log(`[ai] Persona generated for ${userId}`);
+      }
+    }
     await computeScoresForNewUser(userId);
     console.log(`[sync] Done for ${userId}`);
   } catch (err) {
