@@ -1,8 +1,14 @@
-const GEMINI_URL =`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+const GEMINI_KEYS = [
+  process.env.GEMINI_API_KEY,
+  process.env.GEMINI_API_KEY_2,
+].filter(Boolean) as string[];
 
-async function askGemini(prompt: string, retries = 3): Promise<string> {
+function getGeminiUrl(keyIndex: number) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEYS[keyIndex]}`;
+}
+async function askGemini(prompt: string, keyIndex = 0, retries = 2): Promise<string> {
   try {
-    const response = await fetch(GEMINI_URL, {
+    const response = await fetch(getGeminiUrl(keyIndex), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -11,11 +17,16 @@ async function askGemini(prompt: string, retries = 3): Promise<string> {
       })
     });
 
-    if (response.status === 429 && retries > 0) {
-      console.log(`[gemini] Rate limited — waiting 10 seconds, ${retries} retries left`);
-      await new Promise(r => setTimeout(r, 10000));  // wait 10 seconds
-      return askGemini(prompt, retries - 1);
-    }
+    if (response.status === 429) {
+  if (retries > 0) {
+    console.log(`[gemini] Key ${keyIndex + 1} rate limited — waiting 5s`);
+    await new Promise(r => setTimeout(r, 5000));
+    return askGemini(prompt, keyIndex, retries - 1);
+  } else {
+    console.log(`[gemini] Switching to key ${keyIndex + 2}`);
+    return askGemini(prompt, keyIndex + 1, 2);
+  }
+}
 
     if (!response.ok) {
       console.error('[gemini] API error:', response.status);
